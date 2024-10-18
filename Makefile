@@ -1,3 +1,3 @@
-ccode: ccode
-		$(CC) ccode.c -o ccode kilo -Wall -Wextra -pedantic -std=c99
+ccode: ccode.c
+		$(CC) ccode.c -o ccode -Wall -Wextra -pedantic -std=c99
 
