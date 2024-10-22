@@ -97,7 +97,7 @@ int getWindowSize(int *rows, int *cols)
 void editorDrawRows()
 {
 	int i;
-	for (i = 0; i < 24; i++)
+	for (i = 0; i < E.screenrows; i++)
 	{
 		write(STDOUT_FILENO, "~\r\n", 3);
 	}
