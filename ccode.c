@@ -23,6 +23,9 @@ struct termios orig_termios;
  */
 void die(const char *s)
 {
+	write(STDOUT_FILENO, "\x1b[2j]", 4);
+	write(STDOUT_FILENO, "\x1b[H", 3);
+
 	perror(s);
 	exit(1);
 }
@@ -65,6 +68,21 @@ char editorReadKey()
 }
 
 /**
+ * Output
+ */
+
+void editorRefreshScreen()
+{
+	write(STDOUT_FILENO, "\x1b[2j]", 4);
+	// \x1b - escape character or 27 in decimal
+	// [ - escape sequence,
+	// 2J - clear entire screen
+
+	write(STDOUT_FILENO, "\x1b[H", 3);
+	// H - cursor position
+}
+
+/**
  * Input
  */
 
@@ -75,6 +93,8 @@ void editorProcessKeypress()
 	switch (c)
 	{
 	case CTRL_KEY('q'):
+		write(STDOUT_FILENO, "\x1b[2j]", 4);
+		write(STDOUT_FILENO, "\x1b[H", 3);
 		exit(0);
 		break;
 	}
