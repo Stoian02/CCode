@@ -5,6 +5,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/ioctl.h>
 #include <termios.h>
 #include <unistd.h>
 
@@ -76,6 +77,15 @@ char editorReadKey()
  * Output
  */
 
+void editorDrawRows()
+{
+	int i;
+	for (i = 0; i < 24; i++)
+	{
+		write(STDOUT_FILENO, "~\r\n", 3);
+	}
+}
+
 void editorRefreshScreen()
 {
 	write(STDOUT_FILENO, "\x1b[2j]", 4);
@@ -88,15 +98,6 @@ void editorRefreshScreen()
 
 	editorDrawRows();
 	write(STDOUT_FILENO, "\x1b[H", 3);
-}
-
-void editorDrawRows()
-{
-	int i;
-	for (i = 0; i < 24; i++)
-	{
-		write(STDOUT_FILENO, "~\r\n", 3);
-	}
 }
 
 /**
