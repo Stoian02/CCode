@@ -80,6 +80,18 @@ void editorRefreshScreen()
 
 	write(STDOUT_FILENO, "\x1b[H", 3);
 	// H - cursor position
+
+	editorDrawRows();
+	write(STDOUT_FILENO, "\x1b[H", 3);
+}
+
+void editorDrawRows()
+{
+	int i;
+	for (i = 0; i < 24; i++)
+	{
+		write(STDOUT_FILENO, "~\r\n", 3);
+	}
 }
 
 /**
