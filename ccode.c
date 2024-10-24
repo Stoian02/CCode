@@ -14,6 +14,8 @@
  * Helps:
  * ESC [ Pn ; Pn R
  * Docs - https://vt100.net/docs/vt100-ug/chapter3.html#CPR
+ * VT models - https://vt100.net/docs/vt510-rm/DECTCEM.html
+ *
  *
  */
 
@@ -157,6 +159,8 @@ void editorDrawRows(struct abuf *ab)
     for (i = 0; i < E.screenrows; i++)
     {
         abAppend(ab, "~", 1);
+
+        abAppend(ab, "\x1b[K]", 3);
         if (i < E.screenrows - 1)
         {
             abAppend(ab, "\r\n", 2);
@@ -169,7 +173,6 @@ void editorRefreshScreen()
     struct abuf ab = ABUF_INIT;
 
     abAppend(&ab, "x1b[?25l", 6);
-    abAppend(&ab, "\x1b[2J", 4);
     abAppend(&ab, "\x1b[H", 3);
 
     editorDrawRows(&ab);
