@@ -20,6 +20,8 @@
  */
 
 /*** * Defines: ***/
+#define CCODE_VERSION "0.0.1"
+
 #define CTRL_KEY(k) ((k) & 0x1f)
 
 /*** Data: ***/
@@ -158,7 +160,27 @@ void editorDrawRows(struct abuf *ab)
     int i;
     for (i = 0; i < E.screenrows; i++)
     {
-        abAppend(ab, "~", 1);
+        if (i == E.screenrows / 3)
+        {
+            char welcome[80];
+            int welcomelen = snprintf(welcome, sizeof(welcome),
+                                      "CCode editor -- version %s", CCODE_VERSION);
+            if (welcomelen > E.screencols)
+                welcomelen = E.screencols;
+            int padding = (E.screencols - welcomelen) / 2;
+            if (padding)
+            {
+                abAppend(ab, "~", 1);
+                padding--;
+            }
+            while (padding--)
+                abAppend(ab, " ", 1);
+            abAppend(ab, welcome, welcomelen);
+        }
+        else
+        {
+            abAppend(ab, "~", 1);
+        }
 
         abAppend(ab, "\x1b[K]", 3);
         if (i < E.screenrows - 1)
