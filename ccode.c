@@ -17,14 +17,10 @@
  *
  */
 
-/**
- * Defines:
- */
+/*** * Defines: ***/
 #define CTRL_KEY(k) ((k) & 0x1f)
 
-/**
- * Data:
- */
+/*** Data: ***/
 
 struct editorConfig
 {
@@ -34,9 +30,7 @@ struct editorConfig
 };
 struct editorConfig E;
 
-/**
- * Terminal
- */
+/*** Terminal ***/
 void die(const char *s)
 {
     write(STDOUT_FILENO, "\x1b[2j]", 4);
@@ -155,9 +149,7 @@ void abFree(struct abuf *ab)
     free(ab->b);
 }
 
-/**
- * Output
- */
+/*** Output ***/
 
 void editorDrawRows(struct abuf *ab)
 {
@@ -183,9 +175,7 @@ void editorRefreshScreen()
     abFree(&ab);
 }
 
-/**
- * Input
- */
+/*** Input ***/
 
 void editorProcessKeypress()
 {
@@ -201,9 +191,7 @@ void editorProcessKeypress()
     }
 }
 
-/**
- * Init
- */
+/*** Init ***/
 
 void initEditor()
 {
