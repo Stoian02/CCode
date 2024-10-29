@@ -30,6 +30,7 @@ enum editorKey
     ARROW_RIGHT,
     ARROW_UP,
     ARROW_DOWN,
+    DELETE_KEY,
     HOME_KEY,
     END_KEY,
     PAGE_UP,
@@ -111,6 +112,8 @@ int editorReadKey()
                     {
                     case '1':
                         return HOME_KEY;
+                    case '3':
+                        return DELETE_KEY;
                     case '4':
                         return END_KEY;
                     case '5':
