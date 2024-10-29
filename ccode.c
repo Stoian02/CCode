@@ -30,6 +30,8 @@ enum editorKey
     ARROW_RIGHT,
     ARROW_UP,
     ARROW_DOWN,
+    HOME_KEY,
+    END_KEY,
     PAGE_UP,
     PAGE_DOWN
 };
@@ -107,12 +109,23 @@ int editorReadKey()
                 {
                     switch (seq[1])
                     {
+                    case '1':
+                        return HOME_KEY;
+                    case '4':
+                        return END_KEY;
                     case '5':
                         return PAGE_UP;
                     case '6':
                         return PAGE_DOWN;
+                    case '7':
+                        return HOME_KEY;
+                    case '8':
+                        return END_KEY;
                     }
                 }
+            }
+            else
+            {
                 switch (seq[1])
                 {
                 case 'A':
@@ -123,7 +136,21 @@ int editorReadKey()
                     return ARROW_RIGHT;
                 case 'D':
                     return ARROW_LEFT;
+                case 'H':
+                    return HOME_KEY;
+                case 'F':
+                    return END_KEY;
                 }
+            }
+        }
+        else if (seq[0] == 'O')
+        {
+            switch (seq[1])
+            {
+            case 'H':
+                return HOME_KEY;
+            case 'F':
+                return END_KEY;
             }
         }
         return '\x1b';
@@ -132,8 +159,6 @@ int editorReadKey()
     {
         return c;
     }
-
-    return c;
 }
 
 int getCursorPosition(int *rows, int *cols)
@@ -249,7 +274,7 @@ void editorRefreshScreen()
 {
     struct abuf ab = ABUF_INIT;
 
-    abAppend(&ab, "x1b[?25l", 6);
+    abAppend(&ab, "\x1b[?25l", 6);
     abAppend(&ab, "\x1b[H", 3);
 
     editorDrawRows(&ab);
@@ -258,7 +283,7 @@ void editorRefreshScreen()
     snprintf(buf, sizeof(buf), "\x1b[%d;%dH", (E.cursor_y + 1), (E.cursor_x + 1));
     abAppend(&ab, buf, strlen(buf));
 
-    abAppend(&ab, "x1b[?25H", 6);
+    abAppend(&ab, "\x1b[?25h", 6); // Show the cursor
 
     write(STDOUT_FILENO, ab.b, ab.len);
     abFree(&ab);
@@ -298,6 +323,13 @@ void editorProcessKeypress()
         write(STDOUT_FILENO, "\x1b[2j]", 4);
         write(STDOUT_FILENO, "\x1b[H", 3);
         exit(0);
+        break;
+
+    case HOME_KEY:
+        E.cursor_x = 0;
+        break;
+    case END_KEY:
+        E.cursor_x = E.screencols - 1;
         break;
     case PAGE_UP:
     case PAGE_DOWN:
