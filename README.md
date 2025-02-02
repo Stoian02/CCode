@@ -1,1 +1,1 @@
-A Simple compilator in C
+A Simple text editor written in C
