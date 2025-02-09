@@ -1,6 +1,11 @@
 /**
  * Includes:
  */
+
+#define _DEFAULT_SOURCE
+#define _BSD_SOURCE
+#define _GNU_SOURCE
+
 #include <ctype.h>
 #include <errno.h>
 #include <stdio.h>
@@ -279,7 +284,7 @@ void editorDrawRows(struct abuf *ab)
     for (i = 0; i < E.screenrows; i++)
     {
         if(i >= E.numrows) {
-            if (i == E.screenrows / 3)
+            if (E.numrows == 0 && i == E.screenrows / 3)
             {
                 char welcome[80];
                 int welcomelen = snprintf(welcome, sizeof(welcome),
