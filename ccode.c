@@ -22,7 +22,7 @@
  * Docs - https://vt100.net/docs/vt100-ug/chapter3.html#CPR
  * VT models - https://vt100.net/docs/vt510-rm/DECTCEM.html
  *
- *
+ * To: Snap cursor to end of line
  */
 
 /*** * Defines: ***/
@@ -356,7 +356,8 @@ void editorRefreshScreen()
     editorDrawRows(&ab);
 
     char buf[32];
-    snprintf(buf, sizeof(buf), "\x1b[%d;%dH", (E.cursor_y - E.rowoff) + 1, (E.cursor_x - E.rowoff) + 1);
+    snprintf(buf, sizeof(buf), "\x1b[%d;%dH", (E.cursor_y - E.rowoff) + 1,
+                                              (E.cursor_x - E.coloff) + 1);
     abAppend(&ab, buf, strlen(buf));
 
     abAppend(&ab, "\x1b[?25h", 6); // Show the cursor
