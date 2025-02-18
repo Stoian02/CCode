@@ -369,14 +369,25 @@ void editorRefreshScreen()
 /*** Input ***/
 void editorMoveCursor(int key)
 {
+    erow *row = (E.cursor_y > E.numrows) ? NULL : &E.row[E.cursor_y];
+
     switch (key)
     {
     case ARROW_LEFT:
-        if (E.cursor_x != 0)
+        if (E.cursor_x != 0) {
             E.cursor_x--;
+        } else if (E.cursor_y > 0) {
+            E.cursor_y--;
+            E.cursor_x = E.row[E.cursor_y].size;
+        }
         break;
     case ARROW_RIGHT:
-        E.cursor_x++;
+        if(row && E.cursor_x < row->size) {
+            E.cursor_x++;
+        } else if (row && E.cursor_x == row->size) {
+            E.cursor_y++;
+            E.cursor_x = 0;
+        }
         break;
     case ARROW_UP:
         if (E.cursor_y != 0)
@@ -386,6 +397,12 @@ void editorMoveCursor(int key)
         if (E.cursor_y < E.numrows - 1)
             E.cursor_y++;
         break;
+    }
+
+    row = (E.cursor_y >= E.numrows) ? NULL : &E.row[E.cursor_y];
+    int rowlen = row ? row->size : 0;
+    if (E.cursor_x > rowlen) {
+        E.cursor_x = rowlen;
     }
 }
 
