@@ -472,22 +472,24 @@ void editorProcessKeypress()
         E.cursor_x = 0;
         break;
     case END_KEY:
-        E.cursor_x = E.screencols - 1;
+        if (E.cursor_y < E.numrows) {
+            E.cursor_x = E.row[E.cursor_y].size;
+        }
         break;
     case PAGE_UP:
     case PAGE_DOWN:
-    {
-        if (c == PAGE_UP) {
-            E.cursor_y = E.rowoff;
-        } else if (c == PAGE_DOWN) {
-            E.cursor_y = E.rowoff + E.screenrows - 1;
-            if (E.cursor_y > E.numrows) E.cursor_y = E.numrows;
+        {
+            if (c == PAGE_UP) {
+                E.cursor_y = E.rowoff;
+            } else if (c == PAGE_DOWN) {
+                E.cursor_y = E.rowoff + E.screenrows - 1;
+                if (E.cursor_y > E.numrows) E.cursor_y = E.numrows;
+            }
+            int times = E.screenrows;
+            while (times--)
+                editorMoveCursor(c == PAGE_UP ? ARROW_UP : ARROW_DOWN);
         }
-        int times = E.screenrows;
-        while (times--)
-            editorMoveCursor(c == PAGE_UP ? ARROW_UP : ARROW_DOWN);
-    }
-    break;
+        break;
     case ARROW_UP:
     case ARROW_DOWN:
     case ARROW_LEFT:
