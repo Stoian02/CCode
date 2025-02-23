@@ -64,6 +64,7 @@ struct editorConfig
     int screencols;
     int numrows;
     erow *row;
+    char *filename;
     struct termios orig_termios;
 };
 struct editorConfig E;
@@ -289,6 +290,10 @@ void editorAppendRow(char *s, size_t len) {
 /*** file i/o ***/
 
 void editorOpen(char *filename) {
+    free(E.filename);
+    // copies a gives str, allocating required memory
+    E.filename = strdup(filename);
+
     FILE *fp = fopen(filename, "r");
     if(!fp) die("fopen");
 
@@ -387,11 +392,45 @@ void editorDrawRows(struct abuf *ab)
             abAppend(ab, &E.row[filerow].render[E.coloff], len);
         }
         abAppend(ab, "\x1b[K]", 3);
-        if (i < E.screenrows - 1)
-        {
-            abAppend(ab, "\r\n", 2);
+
+        abAppend(ab, "\r\n", 2);
+    }
+}
+
+/**
+ * The m command (Selected Graphic Rendition) is used to change the text's
+ * appearance in the terminal - bold (1), underline (4) or inverted (7).
+ * Effects can be combined, reseting text back - <esc>[m.
+ * http://vt100.net/docs/vt100-ug/chapter3.html#SGR
+ *
+ * Current line is in E.cursor_y. Aligning the 2nd string,
+ * spaces are printed until the right edge of screen.
+ */
+void editorDrawStatusBar(struct abuf *ab) {
+    // Switch to inverted colors with: <esc>[7m
+    abAppend(ab, "\x1b[7m", 4);
+
+    char status[80], rstatus[80];
+    int len = snprintf(status, sizeof(status), "%.20s - %d lines",
+        E.filename ? E.filename : "[No Name]", E.numrows);
+    int rlen = snprintf(rstatus, sizeof(rstatus), "%d/%d",
+        E.cursor_y + 1, E.numrows);
+
+    if (len > E.screencols) len = E.screencols;
+    abAppend(ab, status, len);
+
+    while (len < E.screencols) {
+        if (E.screencols - len == rlen) {
+            abAppend(ab, rstatus, rlen);
+            break;
+        } else {
+            abAppend(ab, " ", 1);
+            len++;
         }
     }
+
+    // Switch back to normal colors(formatting) with: <esc>[m
+    abAppend(ab, "\x1b[m", 3);
 }
 
 void editorRefreshScreen()
@@ -404,6 +443,7 @@ void editorRefreshScreen()
     abAppend(&ab, "\x1b[H", 3);
 
     editorDrawRows(&ab);
+    editorDrawStatusBar(&ab);
 
     char buf[32];
     snprintf(buf, sizeof(buf), "\x1b[%d;%dH", (E.cursor_y - E.rowoff) + 1,
@@ -510,9 +550,10 @@ void initEditor()
     E.coloff = 0;
     E.numrows = 0;
     E.row = NULL;
+    E.filename = NULL;
 
-    if (getWindowSize(&E.screenrows, &E.screencols) == -1)
-        die("getWindowSize");
+    if (getWindowSize(&E.screenrows, &E.screencols) == -1) die("getWindowSize");
+    E.screenrows -= 1;
 }
 
 int main(int argc, char *argv[])
