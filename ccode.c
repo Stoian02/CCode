@@ -290,6 +290,42 @@ void editorAppendRow(char *s, size_t len) {
 
     E.numrows++;
 }
+/**
+ * Inserts a character into a row at the specified position.
+ *
+ * This function uses memmove() to safely handle overlapping source and
+ * destination arrays. It validates the insertion index, allowing insertion
+ * at the end of the string, then allocates additional memory for the
+ * character and the null terminator, shifts existing chars to make
+ * room for the new char, and updates the row size. Finally, it assigns
+ * the character to the specified position and updates the row's render and
+ * size fields.
+ *
+ * @param erow The row where the character will be inserted.
+ * @param at The index at which to insert the character.
+ * @param c The character to be inserted.
+ */
+void editorRowInsertChar(erow *row, int at, int c) {
+    if (at < 0 || at > row->size)
+        at = row->size;
+
+    row->chars = realloc(row->chars, row->size + 2);
+    memmove(&row->chars[at + 1], &row->chars[at], row->size - at + 1);
+    row->size++;
+    row->chars[at] = c;
+    editorUpdateRow(row);
+}
+
+/*** editor operations ***/
+
+void editorInsertChar(int c) {
+    if(E.cursor_y == E.numrows)
+        editorAppendRow("", 0);
+
+    editorRowInsertChar(&E.row[E.cursor_y], E.cursor_x, c);
+    E.cursor_x++;
+}
+
 
 /*** file i/o ***/
 
@@ -569,6 +605,10 @@ void editorProcessKeypress()
     case ARROW_LEFT:
     case ARROW_RIGHT:
         editorMoveCursor(c);
+        break;
+
+    default:
+        editorInsertChar(c);
         break;
     }
 }
