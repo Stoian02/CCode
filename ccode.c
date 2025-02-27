@@ -8,6 +8,7 @@
 
 #include <ctype.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
@@ -330,6 +331,45 @@ void editorInsertChar(int c) {
 
 /*** file i/o ***/
 
+/**
+ * Converts the rows of the editor into a single string.
+ *
+ * This function calculates the total length of a concatenated string
+ * from multiple rows of text, including newline characters at the end
+ * of each row. It saves the total length into `buflen` to inform the
+ * caller of the string's length.
+ *
+ * After allocating the required memory, it loops through the rows,
+ * using `memcpy()` to copy the contents of each row to the buffer,
+ * appending a newline character after each row.
+ *
+ * The function returns the buffer, and it is the caller's responsibility
+ * to free the allocated memory.
+ *
+ * @param buflen Pointer where the total length of the resulting string will be stored.
+ * @return Pointer to the newly allocated string.
+ */
+char *editorRowsToString(int *buflen) {
+    int totallen = 0;
+    int j;
+
+    for (j = 0; j < E.numrows; j++)
+        totallen += E.row[j].size + 1;
+    *buflen = totallen;
+
+    char *buf = malloc(totallen);
+    char *p = buf;
+
+    for (j = 0; j < E.numrows; j++) {
+        memcpy(p, E.row[j].chars, E.row[j].size);
+        p += E.row[j].size;
+        *p = '\n';
+        p++;
+    }
+
+    return buf;
+}
+
 void editorOpen(char *filename) {
     free(E.filename);
     // copies a gives str, allocating required memory
@@ -350,6 +390,32 @@ void editorOpen(char *filename) {
     }
     free(line);
     fclose(fp);
+}
+
+/**
+ * @brief Saves the current content of the editor to a file.
+ *
+ * The function converts the editor's rows into a string and writes it to the file.
+ * The file is opened with read and write permissions (`O_RDWR`),
+ * and if it doesn't exist, it is created with standard permissions (`0644`).
+ * The file size is adjusted to match the content length using `ftruncate()`,
+ * ensuring that no leftover data remains. Truncating ourselves
+ * (not using O_TRUNC flag in open()) is safer in case the ftruncate() call succeeds
+ * but the write() call fails. In that case, the file would still contain
+ * most of the data it had before.
+ * After writing the content to the file, the allocated buffer is freed.
+ */
+void editorSave() {
+    if (E.filename == NULL) return;
+
+    int len;
+    char *buf = editorRowsToString(&len);
+
+    int file = open(E.filename, O_RDWR | O_CREAT, 0644);
+    ftruncate(file, len);
+    write(file, buf, len);
+
+    free(buf);
 }
 
 /*** Append buffer ***/
@@ -581,6 +647,9 @@ void editorProcessKeypress()
             exit(0);
             break;
 
+        case CTRL_KEY('s'):
+            editorSave();
+            break;
         case HOME_KEY:
             E.cursor_x = 0;
             break;
