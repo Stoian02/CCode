@@ -299,6 +299,7 @@ void editorAppendRow(char *s, size_t len) {
     E.numrows++;
     E.dirty++;
 }
+
 /**
  * Inserts a character into a row at the specified position.
  *
@@ -326,6 +327,27 @@ void editorRowInsertChar(erow *row, int at, int c) {
     E.dirty++;
 }
 
+/**
+ * Deletes a character from a row at the specified position.
+ *
+ * This function validates the deletion index, allowing deletion at the
+ * end of the string, then uses memmove() to safely handle overlapping
+ * source and destination arrays. It shifts existing chars to overwrite
+ * the deleted char, decrements the row size, and updates the row's render
+ * and size fields.
+ *
+ * @param row The row from which to delete the character.
+ * @param at The index of the character to delete.
+ */
+void editorRowDeleteChar(erow *row, int at) {
+    if (at < 0 || at >= row->size) return;
+
+    memmove(&row->chars[at], &row->chars[at + 1], row->size - at);
+    row->size--;
+    editorUpdateRow(row);
+    E.dirty++;
+}
+
 /*** editor operations ***/
 
 void editorInsertChar(int c) {
@@ -334,6 +356,24 @@ void editorInsertChar(int c) {
 
     editorRowInsertChar(&E.row[E.cursor_y], E.cursor_x, c);
     E.cursor_x++;
+}
+
+/**
+ * Deletes a character to the left of the cursor.
+ *
+ * If the cursor’s past the end of the file, then there is nothing to delete,
+ * and we return immediately. Otherwise, we get the erow the cursor is on,
+ * and if there is a character to the left of the cursor, we delete it and
+ * move the cursor one to the left.
+ */
+void editorDeleteChar() {
+    if (E.cursor_y == E.numrows) return;
+
+    erow *row = &E.row[E.cursor_y];
+    if (E.cursor_x > 0) {
+        editorRowDeleteChar(row, E.cursor_x - 1);
+        E.cursor_x--;
+    }
 }
 
 
@@ -690,7 +730,8 @@ void editorProcessKeypress()
         case BACKSPACE:
         case CTRL_KEY('h'):
         case DELETE_KEY:
-            // TODO
+            if (c == DELETE_KEY) editorMoveCursor(ARROW_RIGHT);
+            editorDeleteChar();
             break;
         case PAGE_UP:
         case PAGE_DOWN:
