@@ -300,6 +300,29 @@ void editorAppendRow(char *s, size_t len) {
     E.dirty++;
 }
 
+void editorFreeRow(erow *row) {
+    free(row->render);
+    free(row->chars);
+}
+
+/**
+ * Deletes a row at the specified index.
+ * First we validate the at index. Then we free the memory owned by the row
+ * using editorFreeRow(). We then use memmove() to overwrite the deleted row
+ * struct with the rest of the rows that come after it, and decrement numrows.
+ * Finally, we increment E.dirty.
+ *
+ * @param int at The index of the row to delete.
+ */
+void editorDeleteRow(int at) {
+    if (at < 0 || at >= E.numrows) return;
+
+    editorFreeRow(&E.row[at]);
+    memmove(&E.row[at], &E.row[at + 1], sizeof(erow) * (E.numrows - at - 1));
+    E.numrows--;
+    E.dirty++;
+}
+
 /**
  * Inserts a character into a row at the specified position.
  *
@@ -323,6 +346,29 @@ void editorRowInsertChar(erow *row, int at, int c) {
     memmove(&row->chars[at + 1], &row->chars[at], row->size - at + 1);
     row->size++;
     row->chars[at] = c;
+    editorUpdateRow(row);
+    E.dirty++;
+}
+
+/**
+ * Appends a string to a row.
+ *
+ * This function reallocates memory for the row's chars field, copying the
+ * specified string to the end of the row's existing chars, updating the
+ * row's size, and adding a null terminator. It then updates the row's
+ * render and size fields and increments dirty flag.
+ *
+ * @param row The row to which the string will be appended.
+ * @param s The string to append.
+ * @param len The length of the string to append.
+ */
+void editorRowAppendString(erow *row, char *s, size_t len) {
+    row->chars = realloc(row->chars, row->size + len + 1);
+    memcpy(&row->chars[row->size], s, len);
+
+    row->size += len;
+    row->chars[row->size] = '\0';
+
     editorUpdateRow(row);
     E.dirty++;
 }
@@ -368,11 +414,17 @@ void editorInsertChar(int c) {
  */
 void editorDeleteChar() {
     if (E.cursor_y == E.numrows) return;
+    if(E.cursor_x == 0 && E.cursor_y == 0) return;
 
     erow *row = &E.row[E.cursor_y];
     if (E.cursor_x > 0) {
         editorRowDeleteChar(row, E.cursor_x - 1);
         E.cursor_x--;
+    } else {
+        E.cursor_x = E.row[E.cursor_y - 1].size;
+        editorRowAppendString(&E.row[E.cursor_y - 1], row->chars, row->size);
+        editorDeleteRow(E.cursor_y);
+        E.cursor_y--;
     }
 }
 
