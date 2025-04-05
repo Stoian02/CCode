@@ -283,10 +283,12 @@ void editorUpdateRow(erow *row) {
     row->rsize = idx;
 }
 
-void editorAppendRow(char *s, size_t len) {
-    E.row = realloc(E.row, sizeof(erow) * (E.numrows + 1));
+void editorInsertRow(int at, char *s, size_t len) {
+    if (at < 0 || at > E.numrows) return;
 
-    int at = E.numrows;
+    E.row = realloc(E.row, sizeof(erow) * (E.numrows + 1));
+    memmove(&E.row[at + 1], &E.row[at], sizeof(erow) * (E.numrows - at));
+
     E.row[at].size = len;
     E.row[at].chars = malloc(len + 1);
     memcpy(E.row[at].chars, s, len);
@@ -398,10 +400,25 @@ void editorRowDeleteChar(erow *row, int at) {
 
 void editorInsertChar(int c) {
     if(E.cursor_y == E.numrows)
-        editorAppendRow("", 0);
+        editorInsertRow(E.numrows, "", 0);
 
     editorRowInsertChar(&E.row[E.cursor_y], E.cursor_x, c);
     E.cursor_x++;
+}
+
+void editorInsertNewline() {
+    if(E.cursor_x == 0) {
+        editorInsertRow(E.cursor_y, "", 0);
+    } else {
+        erow *row = &E.row[E.cursor_y];
+        editorInsertRow(E.cursor_y + 1, &row->chars[E.cursor_y], row->size - E.cursor_x);
+        row = &E.row[E.cursor_y];
+        row->size = E.cursor_x;
+        row->chars[row->size] = '\0';
+        editorUpdateRow(row);
+    }
+    E.cursor_y++;
+    E.cursor_x = 0;
 }
 
 /**
@@ -486,7 +503,7 @@ void editorOpen(char *filename) {
         while(linelen > 0 && (line[linelen - 1] == '\n' ||
                               line[linelen - 1] == '\r'))
             linelen--;
-        editorAppendRow(line, linelen);
+        editorInsertRow(E.numrows, line, linelen);
     }
     free(line);
     fclose(fp);
@@ -754,7 +771,7 @@ void editorProcessKeypress()
 
     switch (c) {
         case '\r': // Enter key
-            // TODO
+            editorInsertNewline();
             break;
         case CTRL_KEY('q'):
             if (E.dirty && quit_times > 0) {
