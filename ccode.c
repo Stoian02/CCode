@@ -80,6 +80,7 @@ struct editorConfig E;
 /*** Prototypes ***/
 
 void editorSetStatusMessage(const char *fmt, ...);
+void editorRefreshScreen();
 
 /*** Terminal ***/
 void die(const char *s)
@@ -407,11 +408,11 @@ void editorInsertChar(int c) {
 }
 
 void editorInsertNewline() {
-    if(E.cursor_x == 0) {
+    if (E.cursor_x == 0) {
         editorInsertRow(E.cursor_y, "", 0);
     } else {
         erow *row = &E.row[E.cursor_y];
-        editorInsertRow(E.cursor_y + 1, &row->chars[E.cursor_y], row->size - E.cursor_x);
+        editorInsertRow(E.cursor_y + 1, &row->chars[E.cursor_x], row->size - E.cursor_x);
         row = &E.row[E.cursor_y];
         row->size = E.cursor_x;
         row->chars[row->size] = '\0';
