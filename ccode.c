@@ -415,6 +415,7 @@ void editorInsertNewline() {
         editorInsertRow(E.cursor_y + 1, &row->chars[E.cursor_x], row->size - E.cursor_x);
         row = &E.row[E.cursor_y];
         row->size = E.cursor_x;
+        row->chars = realloc(row->chars, row->size + 1);
         row->chars[row->size] = '\0';
         editorUpdateRow(row);
     }
