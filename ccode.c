@@ -260,6 +260,20 @@ int editorRowCxToRx(erow *row, int cx) {
     return rx;
 }
 
+// Convert the render index into a chars index
+int editorRowRxToCx(erow *row, int rx) {
+    int cur_rx = 0;
+    int cx;
+    for (cx = 0; cx < row->size; cx++) {
+        if (row->chars[cx] == '\t')
+            cur_rx += (CCODE_TAB_STOP - 1) - (cur_rx % CCODE_TAB_STOP);
+        cur_rx++;
+
+        if (cur_rx > rx) return cx;
+    }
+    return cx;
+}
+
 void editorUpdateRow(erow *row) {
     int tabs = 0;
     int j;
@@ -556,6 +570,27 @@ void editorSave() {
     editorSetStatusMessage("Can't save! I/O error: %s", strerror(errno));
 }
 
+/*** Find ***/
+
+void editorFind() {
+    char *query = editorPrompt("Search: %s (ESC to cancel)");
+    if (query == NULL) return;
+
+    int i;
+    for (i = 0; i < E.numrows; i++) {
+        erow *row = &E.row[i];
+        char *match = strstr(row->render, query);
+        if (match) {
+            E.cursor_y = i;
+            E.cursor_x = editorRowRxToCx(row, match - row->render);
+            E.rowoff = E.numrows;
+
+            break;
+        }
+    }
+    free(query);
+}
+
 /*** Append buffer ***/
 struct abuf
 {
@@ -838,6 +873,9 @@ void editorProcessKeypress()
             if (E.cursor_y < E.numrows) {
                 E.cursor_x = E.row[E.cursor_y].size;
             }
+            break;
+        case CTRL_KEY('f'):
+            editorFind();
             break;
         case BACKSPACE:
         case CTRL_KEY('h'):
