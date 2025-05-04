@@ -51,7 +51,8 @@ enum editorKey
 
 enum editorHighlight {
     HL_NORMAL = 0,
-    HL_NUMBER
+    HL_NUMBER,
+    HL_FIND
 };
 
 /*** Data: ***/
@@ -272,6 +273,7 @@ void editorUpdateSyntax(erow *row) {
 int editorSyntaxToColor(int highlight) {
     switch (highlight) {
         case HL_NUMBER: return 31;
+        case HL_FIND: return 34;
         default: return 37;
     }
 }
@@ -638,6 +640,7 @@ void editorFindCallback(char *query, int key) {
             E.cursor_x = editorRowRxToCx(row, match - row->render);
             E.rowoff = E.numrows;
 
+            memset(&row->highlight[match - row->render], HL_FIND, strlen(query));
             break;
         }
     }
