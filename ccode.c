@@ -609,6 +609,14 @@ void editorSave() {
 void editorFindCallback(char *query, int key) {
     static int last_match = -1;
     static int direction = 1;
+    static int saved_highlight_row;
+    static char *saved_highlight = NULL;
+
+    if (saved_highlight) {
+        memcpy(E.row[saved_highlight_row].highlight, saved_highlight, E.row[saved_highlight_row].rsize);
+        free(saved_highlight);
+        saved_highlight = NULL;
+    }
 
     if (key == '\r' || key == '\x1b') {
         last_match = -1;
@@ -640,6 +648,9 @@ void editorFindCallback(char *query, int key) {
             E.cursor_x = editorRowRxToCx(row, match - row->render);
             E.rowoff = E.numrows;
 
+            saved_highlight_row = current;
+            saved_highlight = malloc(row->rsize);
+            memcpy(saved_highlight, row->highlight, row->size);
             memset(&row->highlight[match - row->render], HL_FIND, strlen(query));
             break;
         }
