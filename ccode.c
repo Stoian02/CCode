@@ -255,15 +255,29 @@ int getWindowSize(int *rows, int *cols)
 }
 
 /*** syntax highlight ***/
+int is_separator(int c) {
+    return isspace(c) || c == '\0' || strchr(",.()+-/*=~%<>[];", c) != NULL;
+}
+
 void editorUpdateSyntax(erow *row) {
-    row->highlight = realloc(row->highlight, row->size);
+    row->highlight = realloc(row->highlight, row->rsize);
     memset(row->highlight, HL_NORMAL, row->rsize);
 
-    int i;
-    for (i = 0; i < row->size; i++) {
-        if (isdigit(row->render[i])) {
+    int prev_separator = 1;
+
+    int i = 0;
+    while (i < row->rsize) {
+        char c = row->render[i];
+        unsigned char prev_highlight = (i > 0) ? row->highlight[i - 1] : HL_NORMAL;
+
+        if ((isdigit(c) && (prev_separator || prev_highlight == HL_NUMBER)) || (c == '.' && prev_highlight == HL_NUMBER)) {
             row->highlight[i] = HL_NUMBER;
+            i++;
+            prev_separator = 0;
+            continue;
         }
+        prev_separator = is_separator(c);
+        i++;
     }
 }
 
