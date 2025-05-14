@@ -336,6 +336,12 @@ void editorSelectSyntaxHighlight() {
             if ((is_type && ftype && !strcmp(ftype, s->filematch[i])) || 
                 (!is_type && strstr(E.filename, s->filematch[i]))) {
                 E.syntax = s;
+
+                int filerow ;
+                for (filerow = 0; filerow < E.numrows; filerow++) {
+                    editorUpdateSyntax(&E.row[filerow]);
+                }
+
                 return;
             }
             i++;
