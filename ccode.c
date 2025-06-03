@@ -32,6 +32,7 @@
 #define CCODE_VERSION "0.0.1"
 #define CCODE_TAB_STOP 8
 #define CCODE_QUIT_TIMES 3
+#define LINENUM_WIDTH 5
 
 #define CTRL_KEY(k) ((k) & 0x1f)
 
@@ -938,6 +939,17 @@ void editorDrawRows(struct abuf *ab)
     for (i = 0; i < E.screenrows; i++)
     {
         int filerow = i + E.rowoff;
+
+        if (filerow < E.numrows) {
+            char linenum[16];
+	    snprintf(linenum, sizeof(linenum), "%4d ", filerow + 1);
+	    abAppend(ab, "\x1b[36m", LINENUM_WIDTH);
+	    abAppend(ab, linenum, strlen(linenum));
+	    abAppend(ab, "\x1b[39m", LINENUM_WIDTH);
+        } else {
+	    abAppend(ab, "     ", LINENUM_WIDTH);
+	}
+
         if(filerow >= E.numrows) {
             if (E.numrows == 0 && i == E.screenrows / 3)
             {
@@ -1076,7 +1088,7 @@ void editorRefreshScreen()
 
     char buf[32];
     snprintf(buf, sizeof(buf), "\x1b[%d;%dH", (E.cursor_y - E.rowoff) + 1,
-                                              (E.rx - E.coloff) + 1);
+                                              (E.rx - E.coloff) + 1 + LINENUM_WIDTH);
     abAppend(&ab, buf, strlen(buf));
 
     abAppend(&ab, "\x1b[?25h", 6); // Show the cursor
