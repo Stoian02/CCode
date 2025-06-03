@@ -52,6 +52,7 @@ enum editorKey
 enum editorHighlight {
     HL_NORMAL = 0,
     HL_COMMENT,
+    HL_MLCOMMENT,
     HL_KEYWORD_1,
     HL_KEYWORD_2,
     HL_STRING,
@@ -70,16 +71,20 @@ struct editorSyntax {
     char **filematch;
     char **keywords;
     char *sl_comment_start;
+    char *multiline_comment_start;
+    char *multiline_comment_end;
     int flags;
 };
 
 // editor row
 typedef struct erow {
+    int index;
     int size;
     int rsize;
     char *chars;
     char *render;
     unsigned char *highlight;
+    int hl_open_comment; // highlight_
 } erow;
 
 struct editorConfig
@@ -108,6 +113,7 @@ char *C_HL_types[] = { ".c", ".h", ".cpp", NULL };
 char *C_HL_keywords[] = {
     "switch", "if", "while", "for", "break", "continue", "return", "else",
     "struct", "union", "typedef", "static", "enum", "class", "case", "define",
+    "#define", "include", "#include",
 
     "int|", "long|", "double|", "float|", "char|", "unsigned|", "signed|",
     "void|", NULL
@@ -119,7 +125,7 @@ struct editorSyntax HLDB[] = {
         "c",
         C_HL_types,
         C_HL_keywords,
-        "//",
+        "//", "/*", "*/",
         HL_HIGHLIGHT_NUMBERS | HL_HIGHLIGHT_STRINGS
     }
 };
@@ -310,21 +316,53 @@ void editorUpdateSyntax(erow *row) {
 
     char **keywords = E.syntax->keywords;
 
+    // scs - singleline comment start
+    // mcs - multiline comment start
+    // mce - multiline comment end
     char *scs = E.syntax->sl_comment_start;
+    char *mcs = E.syntax->multiline_comment_start;
+    char *mce = E.syntax->multiline_comment_end;
+
     int scs_len = scs ? strlen(scs) : 0;
+    int mcs_len = mcs ? strlen(mcs) : 0;
+    int mce_len = mce ? strlen(mce) : 0;
+
 
     int prev_separator = 1;
     int in_string = 0;
+    // Initialize to true if the previous row has an unclosed multi-line comment
+    int in_comment = (row->index > 0 && E.row[row->index - 1].hl_open_comment);
 
     int i = 0;
     while (i < row->rsize) {
         char c = row->render[i];
         unsigned char prev_highlight = (i > 0) ? row->highlight[i - 1] : HL_NORMAL;
 
-        if (scs_len && !in_string) {
+        if (scs_len && !in_string && !in_comment) {
             if (!strncmp(&row->render[i], scs, scs_len)) {
                 memset(&row->highlight[i], HL_COMMENT, row->rsize - i);
                 break;
+            }
+        }
+
+        if (mcs_len && mce_len && !in_string) {
+            if (in_comment) {
+                row->highlight[i] = HL_MLCOMMENT;
+                if (!strncmp(&row->render[i], mce, mce_len)) {
+                    memset(&row->highlight[i], HL_MLCOMMENT, mce_len);
+                    i += mce_len;
+                    in_comment = 0;
+                    prev_separator = 1;
+                    continue;
+                } else {
+                    i++;
+                    continue;
+                }
+            } else if (!strncmp(&row->render[i], mcs, mcs_len)) {
+                memset(&row->highlight[i], HL_MLCOMMENT, mcs_len);
+                i += mcs_len;
+                in_comment = 1;
+                continue;
             }
         }
 
@@ -381,6 +419,16 @@ void editorUpdateSyntax(erow *row) {
         prev_separator = is_separator(c);
         i++;
     }
+
+    /** Set current row's hl_highlight_comment to whatever state in_comment got left
+     * in after processing the entire row. That tells us whether the row ended as an
+     * unclosed multi-line comment or not.
+     */
+    int changed = (row->hl_open_comment != in_comment);
+    row->hl_open_comment = in_comment;
+    if (changed && row->index + 1 < E.numrows) {
+        editorUpdateSyntax(&E.row[row->index + 1]);
+    }
 }
 
 /** returns the color code(foreground), reference:
@@ -388,7 +436,8 @@ void editorUpdateSyntax(erow *row) {
  */
 int editorSyntaxToColor(int highlight) {
     switch (highlight) {
-        case HL_COMMENT: return 36;
+        case HL_COMMENT:
+        case HL_MLCOMMENT: return 36;
         case HL_STRING: return 35;
         case HL_KEYWORD_1: return 33;
         case HL_KEYWORD_2: return 32;
@@ -485,6 +534,11 @@ void editorInsertRow(int at, char *s, size_t len) {
 
     E.row = realloc(E.row, sizeof(erow) * (E.numrows + 1));
     memmove(&E.row[at + 1], &E.row[at], sizeof(erow) * (E.numrows - at));
+    for (int j = at + 1; j <= E.numrows; j++) {
+        E.row[j].index++;
+    }
+
+    E.row[at].index = at;
 
     E.row[at].size = len;
     E.row[at].chars = malloc(len + 1);
@@ -494,6 +548,7 @@ void editorInsertRow(int at, char *s, size_t len) {
     E.row[at].rsize = 0;
     E.row[at].render = NULL;
     E.row[at].highlight = NULL;
+    E.row[at].hl_open_comment = 0;
     editorUpdateRow(&E.row[at]);
 
     E.numrows++;
@@ -520,6 +575,11 @@ void editorDeleteRow(int at) {
 
     editorFreeRow(&E.row[at]);
     memmove(&E.row[at], &E.row[at + 1], sizeof(erow) * (E.numrows - at - 1));
+
+    for (int j = at; j < E.numrows - 1; j++) {
+        E.row[j].index--;
+    }
+
     E.numrows--;
     E.dirty++;
 }
@@ -912,6 +972,10 @@ void editorDrawRows(struct abuf *ab)
             int j;
             for (j = 0; j < len; j++) {
                 if (iscntrl(c[j])) {
+                    /** Check if the current character is a control character. If so, we translate it into a printable character
+                     * by adding its value to '@' (in ASCII, the capital letters of the alphabet come after the @ character),
+                     * or using the '?' character if it’s not in the alphabetic range.
+                    */
                     char sym = (c[j] <= 26) ? '@' + c[j] : '?';
                     abAppend(ab, "\x1b[7m", 4);
                     abAppend(ab, &sym, 1);
