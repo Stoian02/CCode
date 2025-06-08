@@ -107,6 +107,28 @@ struct editorConfig
 };
 struct editorConfig E;
 
+enum undo_type {
+    UNDO_INSERT,
+    UNDO_DELETE,
+    UNDO_SPLIT,
+    UNDO_JOIN
+};
+
+typedef struct undo_t {
+    enum undo_type type;
+    int x, y;
+    char *text;
+    int len;
+} undo_t;
+
+#define MAX_UNDO 1000
+
+undo_t undo_stack[MAX_UNDO];
+int undo_len = 0;
+
+undo_t redo_stack[MAX_UNDO];
+int redo_len = 0;
+
 /* Filetypes */
 
 char *C_HL_types[] = { ".c", ".h", ".cpp", NULL };
@@ -658,9 +680,79 @@ void editorRowDeleteChar(erow *row, int at) {
 
 /*** editor operations ***/
 
+void editorUndo() {
+    if (undo_len == 0) return;
+
+    undo_t op = undo_stack[--undo_len];
+    redo_stack[redo_len++] = op;
+
+    E.cursor_x = op.x;
+    E.cursor_y = op.y;
+
+    switch (op.type) {
+        case UNDO_INSERT:
+            for (int i = 0; i < op.len; i++) {
+                if (E.cursor_y == E.numrows)
+                    editorInsertRow(E.numrows, "", 0);
+                editorRowInsertChar(&E.row[E.cursor_y], E.cursor_x + i, op.text[i]);
+            }
+            E.cursor_x += op.len;
+            break;
+
+        case UNDO_DELETE:
+            for (int i = 0; i < op.len; i++) {
+                editorRowDeleteChar(&E.row[E.cursor_y], E.cursor_x);
+            }
+            break;
+
+        default:
+            break;
+    }
+}
+
+void editorRedo() {
+    if (redo_len == 0) return;
+
+    undo_t op = redo_stack[--redo_len];
+    undo_stack[undo_len++] = op;
+
+    E.cursor_x = op.x;
+    E.cursor_y = op.y;
+
+    switch (op.type) {
+        case UNDO_DELETE:
+            for (int i = 0; i < op.len; i++) {
+                if (E.cursor_y == E.numrows)
+                    editorInsertRow(E.numrows, "", 0);
+                editorRowInsertChar(&E.row[E.cursor_y], E.cursor_x + i, op.text ? op.text[i] : '?');
+            }
+            E.cursor_x += op.len;
+            break;
+
+        case UNDO_INSERT:
+            for (int i = 0; i < op.len; i++) {
+                editorRowDeleteChar(&E.row[E.cursor_y], E.cursor_x);
+            }
+            break;
+
+        default:
+            break;
+    }
+}
+
 void editorInsertChar(int c) {
     if(E.cursor_y == E.numrows)
         editorInsertRow(E.numrows, "", 0);
+
+    char *copy = malloc(2);
+    copy[0] = c;
+    copy[1] = '\0';
+
+    // UNDO for insert: we store DELETE at current position
+    if (undo_len < MAX_UNDO) {
+        undo_stack[undo_len++] = (undo_t){ UNDO_DELETE, E.cursor_x, E.cursor_y, copy, 1 };
+        redo_len = 0;
+    }
 
     editorRowInsertChar(&E.row[E.cursor_y], E.cursor_x, c);
     E.cursor_x++;
@@ -696,6 +788,16 @@ void editorDeleteChar() {
 
     erow *row = &E.row[E.cursor_y];
     if (E.cursor_x > 0) {
+        // store deleted character
+        char deleted = row->chars[E.cursor_x - 1];
+        char *copy = malloc(2);
+        copy[0] = deleted;
+        copy[1] = '\0';
+
+        if (undo_len < MAX_UNDO) {
+            undo_stack[undo_len++] = (undo_t){ UNDO_INSERT, E.cursor_x - 1, E.cursor_y, copy, 1 };
+            redo_len = 0;
+        }
         editorRowDeleteChar(row, E.cursor_x - 1);
         E.cursor_x--;
     } else {
@@ -942,10 +1044,10 @@ void editorDrawRows(struct abuf *ab)
 
         if (filerow < E.numrows) {
             char linenum[16];
-	    snprintf(linenum, sizeof(linenum), "%4d ", filerow + 1);
-	    abAppend(ab, "\x1b[36m", LINENUM_WIDTH);
-	    abAppend(ab, linenum, strlen(linenum));
-	    abAppend(ab, "\x1b[39m", LINENUM_WIDTH);
+            snprintf(linenum, sizeof(linenum), "%4d ", filerow + 1);
+            abAppend(ab, "\x1b[36m", LINENUM_WIDTH);
+            abAppend(ab, linenum, strlen(linenum));
+            abAppend(ab, "\x1b[39m", LINENUM_WIDTH);
         } else {
 	    abAppend(ab, "     ", LINENUM_WIDTH);
 	}
@@ -1213,6 +1315,12 @@ void editorProcessKeypress()
 
         case CTRL_KEY('s'):
             editorSave();
+            break;
+        case CTRL_KEY('z'):
+            editorUndo();
+            break;
+        case CTRL_KEY('y'):
+            editorRedo();
             break;
         case HOME_KEY:
             E.cursor_x = 0;
