@@ -100,7 +100,7 @@ struct editorConfig
     erow *row;
     int dirty; // If file has been modified since opening or saving
     char *filename;
-    char statusmsg[80];
+    char statusmsg[85];
     time_t statusmsg_time;
     struct editorSyntax *syntax;
     struct termios orig_termios;
@@ -131,7 +131,7 @@ int redo_len = 0;
 
 /* Filetypes */
 
-char *C_HL_types[] = { ".c", ".h", ".cpp", NULL };
+char *C_HL_types[] = { ".c", ".h", ".cpp", ".php", ".js", ".py", NULL };
 // We will differentiate the two types of keywords with | (pipe)
 char *C_HL_keywords[] = {
     "switch", "if", "while", "for", "break", "continue", "return", "else",
@@ -139,7 +139,7 @@ char *C_HL_keywords[] = {
     "#define", "include", "#include",
 
     "int|", "long|", "double|", "float|", "char|", "unsigned|", "signed|",
-    "void|", NULL
+    "void|", "var|", NULL
 };
 
 // Highlight DataBase
@@ -1398,7 +1398,7 @@ int main(int argc, char *argv[])
         editorOpen(argv[1]);
     }
 
-    editorSetStatusMessage("HELP: Ctrl-S = save | Ctrl-Q = quit | CTRL-F = find");
+    editorSetStatusMessage("HELP: Ctrl-S = save | Ctrl-Q = quit | CTRL-F = find | Ctrl-Z = undo | Ctrl-Y = Redo");
 
     while (1)
     {
