@@ -1071,7 +1071,7 @@ void draw_rows(struct abuf *ab)
             }
             else
             {
-                abAppend(ab, "~", 1);
+                abAppend(ab, "-", 1);
             }
         } else {
             int len = E.row[fileditor_row].rsize - E.coloff;
