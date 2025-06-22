@@ -28,7 +28,7 @@
  */
 
 /*** * Defines: ***/
-#define CCODE_VERSION "0.0.1"
+#define CCODE_VERSION "1.0.0"
 #define CCODE_TAB_STOP 4
 #define CCODE_QUIT_TIMES 3
 #define LINENUM_WIDTH 5
